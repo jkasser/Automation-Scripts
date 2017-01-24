@@ -3,7 +3,7 @@ from datetime import datetime
 import traceback
 import os
 
-# python teststuff.py Dev Desktop +2 40 True True True True
+# python teststuff.py Dev Desktop +2 40 True
 
 
 newEnv = sys.argv[1] 
@@ -16,12 +16,12 @@ updates = [newEnv, newPolicy, newRunCount, newReputation, newShouldInstall]
 def editConfig(updates):
 	path = 'C:\\EchoPerf\\'
 	# path = os.path.expanduser('~/Desktop/')
-	tempFile = 'perfConfig1.py'
+	tempFile = 'tempPerfConfig.py'
 	try:
 		print str(datetime.now())[:19], 'Renaming config file'
 		for filename in os.listdir(path):
 			# print filename
-			if filename.startswith("perf"):
+			if filename.startswith("perf") and filename.endswith(".py"):
 				os.rename(path+filename, path+tempFile)
 
 		print str(datetime.now())[:19], 'Reading old file into new one'
@@ -51,5 +51,5 @@ def editConfig(updates):
 	except:
 		print traceback.format_exc()
 
-
-editConfig(updates)
+if __name__ == "main":
+	editConfig(updates)
