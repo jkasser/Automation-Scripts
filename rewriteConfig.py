@@ -14,8 +14,8 @@ newShouldInstall = sys.argv[5]
 updates = [newEnv, newPolicy, newRunCount, newReputation, newShouldInstall]
 
 def editConfig(updates):
-	path = 'C:\\EchoPerf\\'
-	# path = os.path.expanduser('~/Desktop/')
+	# path = 'C:\\EchoPerf\\'
+	path = os.path.expanduser('~/Desktop/')
 	tempFile = 'perfConfig1.py'
 	try:
 		print str(datetime.now())[:19], 'Renaming config file'
@@ -46,10 +46,10 @@ def editConfig(updates):
 					fnew.write(line)
 			fold.close()
 			fnew.close()
-			print str(datetime.now())[:19], 'Config updated! deleting temp file'
+			print str(datetime.now())[:19], 'Config updated! deleting temp file \n'
 			os.remove(path+tempFile)
 	except:
 		print traceback.format_exc()
 
-
-editConfig(updates)
+if __name__ == "__main__":
+	editConfig(updates)
