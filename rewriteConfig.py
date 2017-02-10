@@ -14,15 +14,9 @@ newShouldInstall = sys.argv[5]
 updates = [newEnv, newPolicy, newRunCount, newReputation, newShouldInstall]
 
 def editConfig(updates):
-<<<<<<< HEAD
-	# path = 'C:\\EchoPerf\\'
 	path = os.path.expanduser('~/Desktop/')
-	tempFile = 'perfConfig1.py'
-=======
 	path = 'C:\\EchoPerf\\'
-	# path = os.path.expanduser('~/Desktop/')
 	tempFile = 'tempPerfConfig.py'
->>>>>>> origin/master
 	try:
 		print str(datetime.now())[:19], 'Renaming config file'
 		for filename in os.listdir(path):
