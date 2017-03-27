@@ -93,6 +93,7 @@ def averages(fileList):
 
 	# memory list comprehension to convert strings to ints and average	
 	memory = [int(i[1]) for i in data[1:]]
+	detectLeak(memory)
 	avgMemory = (sum(memory)/len(memory))
 
 	"""
@@ -107,15 +108,30 @@ def averages(fileList):
 		if x == ' ':
 			cpu[i] = 0
 		else:
-			cpu[i] = int(x)
+			cpu[i] = float(x)
 	avgCpu = (sum(cpu)/len(cpu))
 
 	# handles are the same as memory
 	handles = [int(i[3]) for i in data[1:]]
 	avgHandle = (sum(handles)/len(handles))
+	# log it all on separate lines
 	log('Average Memory: '+str(avgMemory))
 	log('Average CPU: '+str(avgCpu))
 	log('Average Handles: '+str(avgHandle))
+
+def detectLeak(memory):
+	leakPotential = 0
+	baseline = memory[0]
+	for x in memory:
+		if x > baseline:
+			leakPotential += 1
+		elif x < baseline:
+			leakPotential -= 1
+	leakThreshold = .7*len(memory)
+	if leakPotential > leakThreshold:
+		log(str(leakPotential)+' leak potential over threshold of '+str(leakThreshold)+', potential memory leak detected!')
+	else:
+		log(str(leakPotential)+' leak potential, threshold of '+str(leakThreshold)+' not met')
 
 def cleanUp(fileList):
 	try:
@@ -127,7 +143,6 @@ def cleanUp(fileList):
 
 if __name__ == '__main__':
 	fileList = []
-	# argList = [sys.argv[1], sys.argv[2], sys.argv[3]]
 	argList = getInputs()
 	stopPerfmon()
 	checkedArgList = setUp(argList)
@@ -136,6 +151,6 @@ if __name__ == '__main__':
 	time.sleep(checkedArgList[2])
 	convertIt(fileList)
 	averages(fileList)
-	cleanUp(fileList)
+	# cleanUp(fileList)
 
 
