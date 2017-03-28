@@ -3,75 +3,64 @@ import sys
 import datetime
 import traceback
 import time
-import itertools
 from subprocess import call, PIPE, Popen
 from csv import reader
 
+def log(msg):
+	now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	print now, msg, '\n'
 
 def getInputs():
 	"""
 	We want to use raw inputs here because if we used sys.argv then the inputs can be entered in the wrong order, etc etc
 	this really limits the potential for screw ups and allows us to add in some helper text since we arent using a gui
 	"""
-	programToPoll = raw_input('Program/Process to check? (e.g. Chrome - no extension is needed)\n')
-	sampleInterval = raw_input('In seconds, how frequently would you like to sample? (e.g. 1)\n')
-	runDuration = raw_input('In Seconds, how long would you like PerfLogger to run? (e.g 60)\n')
-	argList = [programToPoll, sampleInterval, runDuration]
+	checkedPrgrm = getProgram()
+	sampleInterval = getSampleInt()
+	runDuration = getRunDur()
+	argList = [checkedPrgrm, sampleInterval, runDuration]
 	return argList
 
-def log(msg):
-	now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-	print now, msg
-
-def setUp(argList):
-	"""
-	Again, I don't think we need this, a throwback to when I was passing in args on the command line
-	"""
-	if len(argList) < 3:
-		log('This script requires 3 arguments! Please try again')
-		return
-	else:
-		checkedArgList = checkArgs(argList)
-
-	return checkedArgList
-
-def checkArgs(argList):
-	prgrm = argList[0]
-	checkProgram(prgrm)
-	for arg in argList[1:]:
-		"""
-		We don't need this bit anymore, its coming in via CMD since we are packaging this as an exe
-		therefore the variables will come in as a string and we have help text
-		if isinstance(arg, (int, long)):
-			continue
-		else:
-			log('Argument not valid! Value must be an integer')
-		"""
-		try:
-			log('Trying to convert string to int...')
-			newArg = int(arg)
-			for i in (i for i,x in enumerate(argList) if x == arg):
-				argList[i] = newArg
-		except Exception:
-			log(str(traceback.format_exc()))
-
-	return argList
-
-def checkProgram(prgrm):
-	"""
-	The ony important check we actually want to do still. We will call tasklist and then pipe the 
-	output into a list. Then we can check the tasklist to see if the program entered is there. If the 
-	process isn't running then let's bail out because there is no point in continuing. If the process is running
-	then we can continue and use this program to pass it into perfmon.
-	"""
-	prgrmList = []
+def getProgram():
+	prgrmToCheck = raw_input('Program/Process to check (no extension needed)?\n')
 	p = Popen('tasklist', stdin=PIPE, stdout=PIPE, stderr=PIPE)
 	output, err = p.communicate()
-	if prgrm.lower() in output.lower():
-		log(str(prgrm)+' found as a running process!')
+	if prgrmToCheck.lower() in output.lower():
+		log(str(prgrmToCheck)+' found as a running process!')
+		return prgrmToCheck
 	else:
-		log(str(prgrm)+' not found running, exiting program')
-		sys.exit(0)
+		log(str(prgrmToCheck)+' not found running, try again!')
+		sys.stdout.flush()
+		return getProgram()
+
+def getSampleInt():
+	try:
+		sampleInterval = int(raw_input('How frequently would you like to sample (in seconds)?\n'))
+		return sampleInterval
+	except ValueError:
+		log('Must be a valid integer!')
+		return getSampleInt()
+
+def getRunDur():
+	try:
+		runDuration = int(raw_input('How long would you like PerfLogger to run? (in seconds, must be greater than the sample interval)\n'))
+		return runDuration
+	except ValueError:
+		log('Must be a valid integer!')
+		return getRunDur()
+
+def checkArgs(argList):
+	if len(argList) < 3:
+		log('This script requires 3 arguments! Please try again')
+		argList = getInputs()
+		checkedArgList = checkArgs(argList)
+	elif argList[1] >= argList[2]:
+		log('Run duration cannot be less than or equal to the sample size!')
+		argList = getInputs()
+		checkedArgList = checkArgs(argList)
+	else:
+		checkedArgList = argList
+	return checkedArgList
 
 def createPerfmon(argList):
 	path =  os.path.expandvars('%UserProfile%\\Desktop')
@@ -104,40 +93,53 @@ def convertIt(fileList):
 		print traceback.format_exc()
 
 def averages(fileList):
-	# read the csv logger
-	file = os.path.expandvars('%UserProfile%\\Desktop\\PerfLogger.csv')
-	fileList.append(file)
-	with open(file, 'r') as f:
-		data = list(reader(f))
+	try:
+		# read the csv logger
+		file = os.path.expandvars('%UserProfile%\\Desktop\\PerfLogger.csv')
+		fileList.append(file)
+		with open(file, 'r') as f:
+			data = list(reader(f))
 
-	# memory list comprehension to convert strings to ints and average
-	memory = [int(i[1]) for i in data[1:]]
-	avgMemory = (sum(memory)/len(memory))
-
-	"""
-	CPU is kind of special
-	sometimes perfmon records null values and we have to handle this
-	we iterate through the list finding empty strings and replace them with 0
-	since the other values are turned as a string we do the same list comprehension
-	as the other metrics and just change the type to int
-	"""
-	cpu = [i[2] for i in data[1:]]
-	for i,x in enumerate(cpu):
-		if x == ' ':
-			cpu[i] = 0
+		# memory list comprehension to convert strings to ints and average
+		memory = [int(i[1]) for i in data[1:]]
+		# in case we have no datapoints, ive seen it happen so lets bail out gracefully
+		if len(memory) == 0:
+			log('We have no datapoints to analyze! Must not have been a valid application')
+			return
 		else:
-			cpu[i] = float(x)
-	avgCpu = (sum(cpu)/len(cpu))
+			avgMemory = (sum(memory)/len(memory))
 
-	# handles are the same as memory
-	handles = [int(i[3]) for i in data[1:]]
-	avgHandle = (sum(handles)/len(handles))
-	# log it all on separate lines
-	log('Average Memory: '+str(avgMemory))
-	log('Average CPU: '+str(avgCpu))
-	log('Average Handles: '+str(avgHandle))
-	# call this down here so it's the last thing we do
-	detectLeak(memory)
+		"""
+		CPU is kind of special
+		sometimes perfmon records null values and we have to handle this
+		we iterate through the list finding empty strings and replace them with 0
+		since the other values are turned as a string we do the same list comprehension
+		as the other metrics and just change the type to int
+		"""
+		cpu = [i[2] for i in data[1:]]
+		for i,x in enumerate(cpu):
+			if x == ' ':
+				cpu[i] = 0
+			else:
+				cpu[i] = float(x)
+		avgCpu = (sum(cpu)/len(cpu))
+
+		# handles are the same as memory
+		handles = [int(i[3]) for i in data[1:]]
+		avgHandle = (sum(handles)/len(handles))
+		# log it all on separate lines
+		log('Average Memory: '+str(avgMemory))
+		log('Average CPU: '+str(avgCpu))
+		log('Average Handles: '+str(avgHandle))
+		# call this down here so it's the last thing we do
+		detectLeak(memory)
+	except Exception:
+		"""
+		If something goes wrong this happens when there are 0 datapoints, i.e. no memory etc
+		we just want to bail out.
+		"""
+		log('Something went wrong, perhaps no datapoints present, try again!\n'+str(traceback.format_exc()))
+		sys.exit(0)
 
 def detectLeak(memory):
 	"""
@@ -189,8 +191,8 @@ def cleanUp(fileList):
 if __name__ == '__main__':
 	fileList = []
 	argList = getInputs()
+	checkedArgList = checkArgs(argList)
 	stopPerfmon()
-	checkedArgList = setUp(argList)
 	createPerfmon(checkedArgList)
 	startPerfmon()
 	time.sleep(checkedArgList[2])
