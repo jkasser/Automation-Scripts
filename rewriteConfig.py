@@ -51,10 +51,5 @@ def editConfig(updates):
 	except:
 		print traceback.format_exc()
 
-<<<<<<< HEAD
 if __name__ == "__main__":
 	editConfig(updates)
-=======
-if __name__ == "main":
-	editConfig(updates)
->>>>>>> origin/master
